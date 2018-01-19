@@ -33,8 +33,10 @@ private:
 	myCubeCallback() {
 		cubeActor = nullptr;
 		boundsDoVolume = nullptr;
+		imageSource = nullptr;
 	}
 public:
+	vtkImageImport* imageSource;
 	vtkActor* cubeActor;
 	double* boundsDoVolume;
 	static myCubeCallback *New() {
@@ -67,32 +69,72 @@ public:
 		}
 		return std::make_pair(p, gamma);
 	}
-
+	//Isso aqui é chamado toda vez que o renderer do cubo de reslice renderiza
 	void Execute(vtkObject * caller, unsigned long event, void* calldata) {
-		//qual é o centro?
-		std::array<double, 3> center = { {cubeActor->GetCenter()[0],cubeActor->GetCenter()[1], cubeActor->GetCenter()[2], } };
-		//qual é o vetor?
-		std::array<double, 3> u = { { cubeActor->GetMatrix()->Element[0][0], cubeActor->GetMatrix()->Element[1][0],cubeActor->GetMatrix()->Element[2][0],} };		
-		std::pair<std::array<double, 3>, double> uMarch = MarchVectorUntilBorder(center, u, boundsDoVolume);
-		std::array<double, 3> uNeg = { { -cubeActor->GetMatrix()->Element[0][0], -cubeActor->GetMatrix()->Element[1][0], -cubeActor->GetMatrix()->Element[2][0], } };
-		std::pair<std::array<double, 3>, double> uNegMarch = MarchVectorUntilBorder(center, uNeg, boundsDoVolume);
+		////qual é o centro?
+		const std::array<double, 3> center = { {cubeActor->GetCenter()[0],cubeActor->GetCenter()[1], cubeActor->GetCenter()[2], } };
+		////qual é o vetor?
+		const std::array<double, 3> u = { { cubeActor->GetMatrix()->Element[0][0], cubeActor->GetMatrix()->Element[1][0],cubeActor->GetMatrix()->Element[2][0],} };
+		const auto uMarch = MarchVectorUntilBorder(center, u, boundsDoVolume);
+		const std::array<double, 3> uNeg = { { -cubeActor->GetMatrix()->Element[0][0], -cubeActor->GetMatrix()->Element[1][0], -cubeActor->GetMatrix()->Element[2][0], } };
+		const auto uNegMarch = MarchVectorUntilBorder(center, uNeg, boundsDoVolume);
 
-		std::array<double, 3> v = { { cubeActor->GetMatrix()->Element[0][1], cubeActor->GetMatrix()->Element[1][1],cubeActor->GetMatrix()->Element[2][1], } };
-		std::pair<std::array<double, 3>, double> vMarch = MarchVectorUntilBorder(center, v, boundsDoVolume);
-		std::array<double, 3> vNeg = { { -cubeActor->GetMatrix()->Element[0][1], -cubeActor->GetMatrix()->Element[1][1], -cubeActor->GetMatrix()->Element[2][1], } };
-		std::pair<std::array<double, 3>, double> vNegMarch = MarchVectorUntilBorder(center, vNeg, boundsDoVolume);
-		std::cout << "--------" << std::endl;
-		std::cout << "uMarch = " << uMarch.first <<" gamma = "<< uMarch.second<< std::endl;
-		std::cout << "uNegMarch = " << uNegMarch.first << " gamma = " << uNegMarch.second << std::endl;
-		std::cout << "vMarch = " << vMarch.first << " gamma = " << vMarch.second << std::endl;
-		std::cout << "vNegMarch = " << vNegMarch.first << " gamma = " << vNegMarch.second << std::endl;
+		const std::array<double, 3> v = { { cubeActor->GetMatrix()->Element[0][1], cubeActor->GetMatrix()->Element[1][1],cubeActor->GetMatrix()->Element[2][1], } };
+		const auto vMarch = MarchVectorUntilBorder(center, v, boundsDoVolume);
+		const std::array<double, 3> vNeg = { { -cubeActor->GetMatrix()->Element[0][1], -cubeActor->GetMatrix()->Element[1][1], -cubeActor->GetMatrix()->Element[2][1], } };
+		const auto vNegMarch = MarchVectorUntilBorder(center, vNeg, boundsDoVolume);
+
+		const std::array<double,3> xVector = { {abs(uMarch.first[0] - uNegMarch.first[0]),
+			abs(uMarch.first[1] - uNegMarch.first[1]),
+			abs(uMarch.first[2] - uNegMarch.first[2]),
+			} };
+		const std::array<double, 3> yVector = { { abs(vMarch.first[0] - vNegMarch.first[0]),
+			abs(vMarch.first[1] - vNegMarch.first[1]),
+			abs(vMarch.first[2] - vNegMarch.first[2]),
+			} };
+		const double normH = sqrt(xVector[0] * xVector[0] + xVector[1] * xVector[1] + xVector[2] * xVector[2]);
+		const double normV = sqrt(yVector[0] * yVector[0] + yVector[1] * yVector[1] + yVector[2] * yVector[2]);
+		/////Agora que eu tenho os tamanhos da horizontal e da vertical da imagem eu posso fazer o extent do output
+		/////O spacing vai ser inicialmente (1,1,1)
+		/////O center é onde está o center do cubo
+		vtkSmartPointer<vtkImageSlabReslice> thickSlabReslice = vtkSmartPointer<vtkImageSlabReslice>::New();		
+		thickSlabReslice->SetInputConnection(imageSource->GetOutputPort());
+		thickSlabReslice->SetOutputSpacing(1, 1, 1);
+		vtkSmartPointer<vtkMatrix4x4> mat = vtkSmartPointer<vtkMatrix4x4>::New();
+		mat->DeepCopy(cubeActor->GetMatrix());
+		thickSlabReslice->SetResliceAxes(mat);
+		thickSlabReslice->SetResliceAxesOrigin(center[0], center[1], center[2]);
+		thickSlabReslice->SetOutputDimensionality(2);
+		thickSlabReslice->SetOutputExtent(0, normH*1.125, 0, normV*1.125, 0, 1);
+		thickSlabReslice->Update();
+		
+		////grava no disco
+		boost::posix_time::ptime current_date_microseconds = boost::posix_time::microsec_clock::local_time();
+		long milliseconds = current_date_microseconds.time_of_day().total_milliseconds();
+		std::string filename = "c:\\mprcubov2\\dump\\" + boost::lexical_cast<std::string>(milliseconds) + ".vti";
+		vtkSmartPointer<vtkXMLImageDataWriter> debugsave = vtkSmartPointer<vtkXMLImageDataWriter>::New();
+		debugsave->SetFileName(filename.c_str());
+		debugsave->SetInputConnection(thickSlabReslice->GetOutputPort());
+		debugsave->BreakOnError();
+		debugsave->Write();
+		/////Tendo os pontos onde raios saindo do centro encontram os limites do volume eu tenho informações suficientes para calcular extent do reslice
+		////const std::array<double, 6> resliceOutputExtent = { {
+		////		0, vtkMath::Norm()
+		////	} };
+		//std::cout << "--------" << std::endl;
+		//std::cout << "horizontal da imagem = " << xVector<<" tamanho = "<<normH << std::endl;
+		//std::cout << "vertical da imagem = " << yVector <<" tamanho = "<<normV << std::endl;
+		//std::cout << "uMarch = " << uMarch.first <<" gamma = "<< uMarch.second<< std::endl;
+		//std::cout << "uNegMarch = " << uNegMarch.first << " gamma = " << uNegMarch.second << std::endl;
+		//std::cout << "vMarch = " << vMarch.first << " gamma = " << vMarch.second << std::endl;
+		//std::cout << "vNegMarch = " << vNegMarch.first << " gamma = " << vNegMarch.second << std::endl;
 	}
 };
 
 int main(int argc, char** argv) {
 	///Carga da imagem
 	ObserveLoadProgressCommand::Pointer prog = ObserveLoadProgressCommand::New();
-	const std::string txtFile = "C:\\meus dicoms\\Marching Man";//"C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";/*"C:\\meus dicoms\\Marching Man"*/; //"C:\\meus dicoms\\abdomem-feet-first";//"C:\\meus dicoms\\Marching Man"; //"C:\\meus dicoms\\Marching Man";//
+	const std::string txtFile = "C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";// "C:\\meus dicoms\\Marching Man"; /*"C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";*//*"C:\\meus dicoms\\abdomem-feet-first"*/;//"C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";//"C:\\meus dicoms\\Marching Man";//"C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";/*"C:\\meus dicoms\\Marching Man"*/; //"C:\\meus dicoms\\abdomem-feet-first";//"C:\\meus dicoms\\Marching Man"; //"C:\\meus dicoms\\Marching Man";//
 	const std::vector<std::string> lst = GetList(txtFile);
 	std::map<std::string, std::string> metadataDaImagem;
 	itk::Image<short, 3>::Pointer imagemOriginal = LoadVolume(metadataDaImagem, lst, prog);
@@ -144,6 +186,7 @@ int main(int argc, char** argv) {
 	rendererCubeReslicer->AddObserver(vtkCommand::EndEvent, cubeCallback);
 	cubeCallback->cubeActor = actorCuboReslice;
 	cubeCallback->boundsDoVolume = volumeActor->GetBounds();
+	cubeCallback->imageSource = imagemImportadaPraVTK;
 
 	//A tela dummy
 	vtkSmartPointer<vtkRenderer> rendererDummy = vtkSmartPointer<vtkRenderer>::New();
@@ -191,9 +234,9 @@ vtkSmartPointer<vtkVolume> CreateAVolume(vtkSmartPointer<vtkImageImport>src) {
 	volumeMapper->SetInputConnection(src->GetOutputPort());
 	vtkSmartPointer<vtkVolumeProperty> volumeProperties = vtkSmartPointer<vtkVolumeProperty>::New();
 	vtkSmartPointer<vtkColorTransferFunction> ctf = vtkSmartPointer<vtkColorTransferFunction>::New();
-	ctf->AddRGBSegment(1500, 0, 0, 0, 2500, 1, 1, 1);
+	ctf->AddRGBSegment(0, 0, 0, 0, 2500, 1, 1, 1);
 	vtkSmartPointer<vtkPiecewiseFunction> sof = vtkSmartPointer<vtkPiecewiseFunction>::New();
-	sof->AddSegment(1500, 0, 2500, 0.25);
+	sof->AddSegment(0, 0, 2500, 0.25);
 	volumeProperties->SetColor(ctf);
 	volumeProperties->SetScalarOpacity(sof);
 	vtkSmartPointer<vtkVolume> volumeActor = vtkSmartPointer<vtkVolume>::New();
