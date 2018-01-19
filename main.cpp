@@ -32,15 +32,60 @@ class myCubeCallback : public vtkCommand {
 private:
 	myCubeCallback() {
 		cubeActor = nullptr;
+		boundsDoVolume = nullptr;
 	}
 public:
 	vtkActor* cubeActor;
+	double* boundsDoVolume;
 	static myCubeCallback *New() {
 		return new myCubeCallback();
 	}
 
+	bool isInsideBounds(std::array<double, 3> p, double bounds[6]) {
+		if ((bounds[0] < p[0] && p[0] < bounds[1]) &&
+			(bounds[2] < p[1] && p[1] < bounds[3]) &&
+			(bounds[4] < p[2] && p[2] < bounds[5])) {
+			return true;
+		}
+		else {
+			return false;
+		}
+	}
+	std::pair<std::array<double, 3>, double> MarchVectorUntilBorder(std::array<double, 3> c, std::array<double, 3> v, double* bounds) {
+		double gamma = 0.0;
+		std::array<double, 3> p;
+		while (true) {
+			p = c + v * gamma;
+			if (isInsideBounds(p, bounds)) {
+				//incrementa e continua
+				gamma = gamma + 0.1;
+			}
+			else {
+				//para
+				break;
+			}
+		}
+		return std::make_pair(p, gamma);
+	}
+
 	void Execute(vtkObject * caller, unsigned long event, void* calldata) {
-		std::cout << "HELLO..." << std::endl;
+		//qual é o centro?
+		std::array<double, 3> center = { {cubeActor->GetCenter()[0],cubeActor->GetCenter()[1], cubeActor->GetCenter()[2], } };
+		//qual é o vetor?
+		std::array<double, 3> u = { { cubeActor->GetMatrix()->Element[0][0], cubeActor->GetMatrix()->Element[1][0],cubeActor->GetMatrix()->Element[2][0],} };		
+		std::pair<std::array<double, 3>, double> uMarch = MarchVectorUntilBorder(center, u, boundsDoVolume);
+		std::array<double, 3> uNeg = { { -cubeActor->GetMatrix()->Element[0][0], -cubeActor->GetMatrix()->Element[1][0], -cubeActor->GetMatrix()->Element[2][0], } };
+		std::pair<std::array<double, 3>, double> uNegMarch = MarchVectorUntilBorder(center, uNeg, boundsDoVolume);
+
+		std::array<double, 3> v = { { cubeActor->GetMatrix()->Element[0][1], cubeActor->GetMatrix()->Element[1][1],cubeActor->GetMatrix()->Element[2][1], } };
+		std::pair<std::array<double, 3>, double> vMarch = MarchVectorUntilBorder(center, v, boundsDoVolume);
+		std::array<double, 3> vNeg = { { -cubeActor->GetMatrix()->Element[0][1], -cubeActor->GetMatrix()->Element[1][1], -cubeActor->GetMatrix()->Element[2][1], } };
+		std::pair<std::array<double, 3>, double> vNegMarch = MarchVectorUntilBorder(center, vNeg, boundsDoVolume);
+		std::cout << "--------" << std::endl;
+		std::cout << "uMarch = " << uMarch.first <<" gamma = "<< uMarch.second<< std::endl;
+		std::cout << "uNegMarch = " << uNegMarch.first << " gamma = " << uNegMarch.second << std::endl;
+		std::cout << "vMarch = " << vMarch.first << " gamma = " << vMarch.second << std::endl;
+		std::cout << "vNegMarch = " << vNegMarch.first << " gamma = " << vNegMarch.second << std::endl;
 	}
 };
 
@@ -98,6 +143,7 @@ int main(int argc, char** argv) {
 	vtkSmartPointer<myCubeCallback> cubeCallback = vtkSmartPointer<myCubeCallback>::New();
 	rendererCubeReslicer->AddObserver(vtkCommand::EndEvent, cubeCallback);
 	cubeCallback->cubeActor = actorCuboReslice;
+	cubeCallback->boundsDoVolume = volumeActor->GetBounds();
 
 	//A tela dummy
 	vtkSmartPointer<vtkRenderer> rendererDummy = vtkSmartPointer<vtkRenderer>::New();

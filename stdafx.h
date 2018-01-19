@@ -78,3 +78,17 @@
 #include <vtkColorTransferFunction.h>
 #include <vtkPiecewiseFunction.h>
 
+
+static inline std::array<double, 3> operator+(const std::array<double, 3>& a, const std::array<double, 3>& b) {
+	std::array<double, 3> c = { {a[0] + b[0], a[1] + b[1], a[2] + b[2]} };
+	return c;
+}
+static inline std::array<double, 3> operator*(const std::array<double, 3>& a, const double& b) {
+	std::array<double, 3> c = { {a[0] * b, a[1] * b, a[2] * b} };
+	return c;
+}
+
+static inline ostream& operator<<(ostream& os, const std::array<double,3>& data){
+	os << "[" << data[0] << ", " << data[1] << ", " << data[2] << "]";
+	return os;
+}
