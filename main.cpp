@@ -190,6 +190,7 @@ int main(int argc, char** argv) {
 	std::shared_ptr<myResliceCube> myCube = std::make_shared<myResliceCube>();
 	myCube->SetRenderers(rendererCubo, rendererImagem);
 	myCube->SetSource(imagemImportadaPraVTK);
+	myCube->SetBoundsDoVolume(volumeActor->GetBounds());
 	/*vtkSmartPointer<myCubeCallback> cubeCallback = vtkSmartPointer<myCubeCallback>::New();
 	rendererCubeReslicer->AddObserver(vtkCommand::EndEvent, cubeCallback);
 	cubeCallback->cubeActor = actorCuboReslice;
