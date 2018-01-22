@@ -62,7 +62,7 @@
 #include <vtkGeneralTransform.h>
 #include <vtkPlane.h>
 #include <vtkPlaneSource.h>
-
+#include <vtkPolygon.h>
 #include <vtkPlane.h>
 #include <vtkClipPolyData.h>
 #include <vtkAlgorithmOutput.h>
@@ -70,7 +70,8 @@
 #include <vtkHomogeneousTransform.h>
 #include <vtkPoints.h>
 #include <vtkCellArray.h>
-
+#include <vtkIdList.h>
+#include <vtkImageMapToWindowLevelColors.h>
 #include <itkRigid3DTransform.h>
 #include <vtkSmartVolumeMapper.h>
 #include <vtkVolumeProperty.h>

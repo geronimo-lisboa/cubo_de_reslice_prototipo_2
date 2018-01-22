@@ -100,6 +100,12 @@ void myResliceCube::CreateReslice()
 	auto resliceExtent = CalculateResliceExtent(this);
 	resliceFilter->SetOutputExtent(0, resliceExtent[0]*1.125, 0, resliceExtent[1]*1.125, 0, 1);
 	resliceFilter->Update();
+
+	windowLevelFilter = vtkSmartPointer<vtkImageMapToWindowLevelColors>::New();
+	windowLevelFilter->SetWindow(1000);
+	windowLevelFilter->SetLevel(1000);
+	windowLevelFilter->SetInputConnection(resliceFilter->GetOutputPort());
+	windowLevelFilter->Update();
 }
 
 void myResliceCube::CreateCubeGeometry()
@@ -123,6 +129,43 @@ void myResliceCube::CreateWindowLevelFilter()
 
 void myResliceCube::CreateImageGeometry()
 {
+	auto resliceExtent = CalculateResliceExtent(this);//aqui eu tenho o tamanho do extent por ex.:[0, 280, 0,120, 0, 1];
+	//O extent é da forma [x0,x1, y0, y1, z0, z1].
+	//Os vértices do plano serão da forma v0=[x0,y0,z0] v1=[x1, y0, z0] v2=[x1, y1, z0] v3=[x0, y1, z0].
+	std::array<double, 3> v0 = { { 0,0, 0 } };
+	std::array<double, 3> v1 = { { resliceExtent[0], 0, 0 } };
+	std::array<double, 3> v2 = { { resliceExtent[0], resliceExtent[1], 0 } };
+	std::array<double, 3> v3 = { { 0, resliceExtent[1],0 } };
+	std::cout << "resliceExtent = " << resliceExtent[0] << ", " << resliceExtent[1] << std::endl;
+	//Com esses vértices eu contruo meu polydata
+	auto points = vtkSmartPointer<vtkPoints>::New();
+	points->InsertNextPoint(v0[0], v0[1], v0[2]);
+	points->InsertNextPoint(v1[0], v1[1], v1[2]);
+	points->InsertNextPoint(v2[0], v2[1], v2[2]);
+	points->InsertNextPoint(v3[0], v3[1], v3[2]);
+	auto polygon = vtkSmartPointer<vtkPolygon>::New();
+	polygon->GetPointIds()->SetNumberOfIds(4);
+	polygon->GetPointIds()->SetId(0,0);
+	polygon->GetPointIds()->SetId(1, 1);
+	polygon->GetPointIds()->SetId(2, 2);
+	polygon->GetPointIds()->SetId(3, 3);
+	auto polygons = vtkSmartPointer<vtkCellArray>::New();
+	polygons->InsertNextCell(polygon);
+	auto polygonPolyData = vtkSmartPointer<vtkPolyData>::New();
+	polygonPolyData->SetPoints(points);
+	polygonPolyData->SetPolys(polygons);
+	auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+	mapper->SetInputData(polygonPolyData);
+	if (planeActor)
+		rendererLayerImagem->RemoveActor(planeActor);
+	planeActor = vtkSmartPointer<vtkActor>::New();
+	planeActor->SetMapper(mapper);
+	rendererLayerImagem->AddActor(planeActor);
+	rendererLayerImagem->ResetCamera();
+}
+
+vtkSmartPointer<vtkImageMapToWindowLevelColors> myResliceCube::GetWindowLevelFilter() {
+	return windowLevelFilter;
 }
 
 myResliceCube::myResliceCube()
@@ -133,13 +176,24 @@ myResliceCube::myResliceCube()
 	imageSource = nullptr;
 	cubeActor = nullptr;
 	boundsDoVolume = nullptr;
+	planeActor = nullptr;
+	windowLevelFilter = nullptr;
+	resliceFilter = nullptr;
 	resliceMatrix = vtkSmartPointer<vtkMatrix4x4>::New();
+	window = 1000;
+	level = 1000;
 }
 
 void myResliceCube::SetBoundsDoVolume(double * b) {
 	boundsDoVolume = b;
 	SetEverything();
 }
+
+vtkSmartPointer<vtkImageSlabReslice> myResliceCube::GetResliceFilter()
+{
+	return resliceFilter;
+}
+
 
 void myResliceCube::SetRenderers(vtkRenderer * rc, vtkRenderer * ri)
 {
@@ -175,8 +229,15 @@ void myResliceCube::OnAfterRenderCallback::Execute(vtkObject * caller, unsigned 
 	owner->resliceFilter->SetResliceAxes(owner->resliceMatrix);
 	//Executa
 	owner->resliceFilter->Update();
+	//Aplica o window-level
+	owner->windowLevelFilter->Update();
+	//refaz a geometria 
+	owner->CreateImageGeometry();
 	//Salva no hd pra debug
 	SaveDebug();
+}
 
-	
+void myResliceCube::SetWindowAndLevel(double w, double l) {
+	windowLevelFilter->SetWindow(w);
+	windowLevelFilter->SetLevel(l);
 }

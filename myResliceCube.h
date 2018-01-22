@@ -6,6 +6,7 @@ class myResliceCube {
 private:
 	class OnAfterRenderCallback : public vtkCommand {
 		myResliceCube *owner;
+		void SaveDebug();
 	public:
 		static OnAfterRenderCallback* New() { return new OnAfterRenderCallback(); }
 		void SetOwner(myResliceCube *o) { owner = o; }
@@ -17,7 +18,9 @@ private:
 	vtkImageImport *imageSource;
 	vtkSmartPointer<vtkActor> cubeActor;
 	vtkSmartPointer<vtkImageSlabReslice> resliceFilter;
+	vtkSmartPointer<vtkImageMapToWindowLevelColors> windowLevelFilter;
 	vtkSmartPointer<vtkMatrix4x4> resliceMatrix;
+	vtkSmartPointer<vtkActor> planeActor;
 	void SetEverything();
 	void CreateReslice();
 	void CreateCubeGeometry();
@@ -32,5 +35,7 @@ public:
 	void SetRenderers(vtkRenderer *rc, vtkRenderer *ri);
 	void SetSource(vtkImageImport* stc);
 	void SetBoundsDoVolume(double * b);
-
+	vtkSmartPointer<vtkImageSlabReslice> GetResliceFilter();
+	vtkSmartPointer<vtkImageMapToWindowLevelColors> GetWindowLevelFilter();
+	void SetWindowAndLevel(double w, double l);
 };
