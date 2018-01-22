@@ -21,6 +21,8 @@ private:
 	vtkSmartPointer<vtkImageMapToWindowLevelColors> windowLevelFilter;
 	vtkSmartPointer<vtkMatrix4x4> resliceMatrix;
 	vtkSmartPointer<vtkActor> planeActor;
+	vtkSmartPointer<vtkTexture> texture;
+
 	void SetEverything();
 	void CreateReslice();
 	void CreateCubeGeometry();

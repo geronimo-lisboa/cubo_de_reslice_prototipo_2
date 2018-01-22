@@ -72,12 +72,16 @@
 #include <vtkCellArray.h>
 #include <vtkIdList.h>
 #include <vtkImageMapToWindowLevelColors.h>
+#include <vtkTextureMapToPlane.h>
 #include <itkRigid3DTransform.h>
 #include <vtkSmartVolumeMapper.h>
 #include <vtkVolumeProperty.h>
 #include <vtkVolume.h>
 #include <vtkColorTransferFunction.h>
 #include <vtkPiecewiseFunction.h>
+#include <vtkTexture.h>
+#include <vtkFloatArray.h>
+#include <vtkPointData.h>
 
 
 static inline std::array<double, 3> operator+(const std::array<double, 3>& a, const std::array<double, 3>& b) {

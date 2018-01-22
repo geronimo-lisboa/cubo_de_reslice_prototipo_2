@@ -154,12 +154,30 @@ void myResliceCube::CreateImageGeometry()
 	auto polygonPolyData = vtkSmartPointer<vtkPolyData>::New();
 	polygonPolyData->SetPoints(points);
 	polygonPolyData->SetPolys(polygons);
+
+	auto textureCoordinates = vtkSmartPointer<vtkFloatArray>::New();
+	textureCoordinates->SetNumberOfComponents(2);
+	float tuple[2] = { 0.0, 0.0  };
+	textureCoordinates->InsertNextTuple(tuple);
+	tuple[0] = 1.0; tuple[1] = 0.0;  
+	textureCoordinates->InsertNextTuple(tuple);
+	tuple[0] = 1.0; tuple[1] = 1.0; 
+	textureCoordinates->InsertNextTuple(tuple);
+	tuple[0] = 0.0; tuple[1] = 1.0; 
+	textureCoordinates->InsertNextTuple(tuple);
+	polygonPolyData->GetPointData()->SetTCoords(textureCoordinates);
+ 
+	texture = vtkSmartPointer<vtkTexture>::New();
+	texture->SetInputConnection(windowLevelFilter->GetOutputPort());
+
 	auto mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
 	mapper->SetInputData(polygonPolyData);
+
 	if (planeActor)
 		rendererLayerImagem->RemoveActor(planeActor);
 	planeActor = vtkSmartPointer<vtkActor>::New();
 	planeActor->SetMapper(mapper);
+	planeActor->SetTexture(texture);
 	rendererLayerImagem->AddActor(planeActor);
 	rendererLayerImagem->ResetCamera();
 }
@@ -180,8 +198,7 @@ myResliceCube::myResliceCube()
 	windowLevelFilter = nullptr;
 	resliceFilter = nullptr;
 	resliceMatrix = vtkSmartPointer<vtkMatrix4x4>::New();
-	window = 1000;
-	level = 1000;
+	texture = nullptr;
 }
 
 void myResliceCube::SetBoundsDoVolume(double * b) {
