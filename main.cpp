@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "loadVolume.h"
+#include "myResliceCube.h"
 class ObserveLoadProgressCommand : public itk::Command
 {
 public:
@@ -135,7 +136,7 @@ public:
 int main(int argc, char** argv) {
 	///Carga da imagem
 	ObserveLoadProgressCommand::Pointer prog = ObserveLoadProgressCommand::New();
-	const std::string txtFile = "C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";// "C:\\meus dicoms\\Marching Man"; /*"C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";*//*"C:\\meus dicoms\\abdomem-feet-first"*/;//"C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";//"C:\\meus dicoms\\Marching Man";//"C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";/*"C:\\meus dicoms\\Marching Man"*/; //"C:\\meus dicoms\\abdomem-feet-first";//"C:\\meus dicoms\\Marching Man"; //"C:\\meus dicoms\\Marching Man";//
+	const std::string txtFile = "C:\\meus dicoms\\Marching Man"; //"C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";// "C:\\meus dicoms\\Marching Man"; /*"C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";*//*"C:\\meus dicoms\\abdomem-feet-first"*/;//"C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";//"C:\\meus dicoms\\Marching Man";//"C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";/*"C:\\meus dicoms\\Marching Man"*/; //"C:\\meus dicoms\\abdomem-feet-first";//"C:\\meus dicoms\\Marching Man"; //"C:\\meus dicoms\\Marching Man";//
 	const std::vector<std::string> lst = GetList(txtFile);
 	std::map<std::string, std::string> metadataDaImagem;
 	itk::Image<short, 3>::Pointer imagemOriginal = LoadVolume(metadataDaImagem, lst, prog);
@@ -168,27 +169,33 @@ int main(int argc, char** argv) {
 	rendererSistema->AddVolume(volumeActor);
 	rendererSistema->AddActor(actorBoundsVolume);
 	rendererSistema->ResetCamera();
+
 	//A tela do cubo
-	vtkSmartPointer<vtkRenderer> rendererCubeReslicer = vtkSmartPointer<vtkRenderer>::New();
-	rendererCubeReslicer->GetActiveCamera()->ParallelProjectionOn();
-	rendererCubeReslicer->SetBackground(1, 1, 1);
-	vtkSmartPointer<vtkRenderWindow> renderWindowCubeReslicer = vtkSmartPointer<vtkRenderWindow>::New();
+	vtkSmartPointer<vtkOpenGLRenderer> rendererImagem = vtkSmartPointer<vtkOpenGLRenderer>::New();
+	rendererImagem->SetLayer(0);
+	rendererImagem->GetActiveCamera()->ParallelProjectionOn();
+	vtkSmartPointer<vtkOpenGLRenderer> rendererCubo = vtkSmartPointer<vtkOpenGLRenderer>::New();
+	rendererCubo->SetLayer(1);
+	rendererCubo->GetActiveCamera()->ParallelProjectionOn();
+	vtkSmartPointer<vtkWin32OpenGLRenderWindow> renderWindowCubeReslicer = vtkSmartPointer<vtkWin32OpenGLRenderWindow>::New();
+	renderWindowCubeReslicer->SetNumberOfLayers(2);
+	renderWindowCubeReslicer->AddRenderer(rendererImagem);
+	renderWindowCubeReslicer->AddRenderer(rendererCubo);
 	renderWindowCubeReslicer->SetPosition(300, 0);
-	renderWindowCubeReslicer->AddRenderer(rendererCubeReslicer);
 	vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractorCubeReslicer = vtkSmartPointer<vtkRenderWindowInteractor>::New();
 	vtkSmartPointer<vtkInteractorStyleTrackballActor> cubeReslicerStyle = vtkSmartPointer<vtkInteractorStyleTrackballActor>::New();
 	renderWindowInteractorCubeReslicer->SetInteractorStyle(cubeReslicerStyle);
 	renderWindowCubeReslicer->SetInteractor(renderWindowInteractorCubeReslicer);
 	renderWindowInteractorCubeReslicer->Initialize();
-	vtkSmartPointer<vtkActor> actorCuboReslice = CreateResliceCube(volumeActor->GetCenter());
-	rendererCubeReslicer->AddActor(actorCuboReslice);
-	rendererCubeReslicer->ResetCamera();
-	vtkSmartPointer<myCubeCallback> cubeCallback = vtkSmartPointer<myCubeCallback>::New();
+	std::shared_ptr<myResliceCube> myCube = std::make_shared<myResliceCube>();
+	myCube->SetRenderers(rendererCubo, rendererImagem);
+	myCube->SetSource(imagemImportadaPraVTK);
+	/*vtkSmartPointer<myCubeCallback> cubeCallback = vtkSmartPointer<myCubeCallback>::New();
 	rendererCubeReslicer->AddObserver(vtkCommand::EndEvent, cubeCallback);
 	cubeCallback->cubeActor = actorCuboReslice;
 	cubeCallback->boundsDoVolume = volumeActor->GetBounds();
 	cubeCallback->imageSource = imagemImportadaPraVTK;
-
+*/
 	//A tela dummy
 	vtkSmartPointer<vtkRenderer> rendererDummy = vtkSmartPointer<vtkRenderer>::New();
 	vtkSmartPointer<vtkRenderWindow> renderWindowDummy = vtkSmartPointer<vtkRenderWindow>::New();
