@@ -103,6 +103,7 @@ public:
 		vtkSmartPointer<vtkMatrix4x4> mat = vtkSmartPointer<vtkMatrix4x4>::New();
 		mat->DeepCopy(cubeActor->GetMatrix());
 		thickSlabReslice->SetResliceAxes(mat);
+
 		thickSlabReslice->SetResliceAxesOrigin(center[0], center[1], center[2]);
 		thickSlabReslice->SetOutputDimensionality(2);
 		thickSlabReslice->SetOutputExtent(0, normH*1.125, 0, normV*1.125, 0, 1);
