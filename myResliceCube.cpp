@@ -16,6 +16,7 @@ void myResliceCube::SetEverything()
 	CreateImageGeometry();
 	//o callback de quando o cubo é rotacionado
 	callbackDeModificacaoDoCubo = vtkSmartPointer<OnAfterRenderCallback>::New();
+	callbackDeModificacaoDoCubo->SetOwner(this);
 	rendererLayerCubo->AddObserver(vtkCommand::EndEvent, callbackDeModificacaoDoCubo);
 }
 
@@ -90,8 +91,10 @@ void myResliceCube::CreateReslice()
 	resliceFilter = vtkSmartPointer<vtkImageSlabReslice>::New();
 	resliceFilter->SetInputConnection(imageSource->GetOutputPort());
 	resliceFilter->SetOutputSpacing(1, 1, 1);
+
 	resliceMatrix->DeepCopy(cubeActor->GetMatrix());
 	resliceFilter->SetResliceAxes(resliceMatrix);
+
 	resliceFilter->SetResliceAxesOrigin(cubeActor->GetCenter()[0], cubeActor->GetCenter()[1], cubeActor->GetCenter()[2]);
 	resliceFilter->SetOutputDimensionality(2);
 	auto resliceExtent = CalculateResliceExtent(this);
@@ -151,7 +154,29 @@ void myResliceCube::SetSource(vtkImageImport * stc)
 	SetEverything();
 }
 
+void myResliceCube::OnAfterRenderCallback::SaveDebug()
+{
+	boost::posix_time::ptime current_date_microseconds = boost::posix_time::microsec_clock::local_time();
+	long milliseconds = current_date_microseconds.time_of_day().total_milliseconds();
+	std::string filename = "c:\\mprcubov2\\dump\\" + boost::lexical_cast<std::string>(milliseconds) + ".vti";
+	vtkSmartPointer<vtkXMLImageDataWriter> debugsave = vtkSmartPointer<vtkXMLImageDataWriter>::New();
+	debugsave->SetFileName(filename.c_str());
+	debugsave->SetInputConnection(owner->resliceFilter->GetOutputPort());
+	debugsave->BreakOnError();
+	debugsave->Write();
+}
+
 void myResliceCube::OnAfterRenderCallback::Execute(vtkObject * caller, unsigned long event, void * calldata)
 {
-	std::cout << "foobar" << std::endl;
+	//Recalcula o extent do reslice, pega a nova matriz e aplica os dados novos ao reslicer.
+	auto newResliceExtent = myResliceCube::CalculateResliceExtent(owner);
+	owner->resliceFilter->SetOutputExtent(0, newResliceExtent[0] * 1.125, 0, newResliceExtent[1] * 1.125, 0, 1);
+	owner->resliceMatrix->DeepCopy(owner->cubeActor->GetMatrix());
+	owner->resliceFilter->SetResliceAxes(owner->resliceMatrix);
+	//Executa
+	owner->resliceFilter->Update();
+	//Salva no hd pra debug
+	SaveDebug();
+
+	
 }

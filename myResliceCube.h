@@ -5,8 +5,10 @@
 class myResliceCube {
 private:
 	class OnAfterRenderCallback : public vtkCommand {
+		myResliceCube *owner;
 	public:
 		static OnAfterRenderCallback* New() { return new OnAfterRenderCallback(); }
+		void SetOwner(myResliceCube *o) { owner = o; }
 		void Execute(vtkObject * caller, unsigned long event, void* calldata);
 	};
 
