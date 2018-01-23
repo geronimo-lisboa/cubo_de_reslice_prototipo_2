@@ -13,6 +13,8 @@ private:
 		void Execute(vtkObject * caller, unsigned long event, void* calldata);
 	};
 
+	bool gotTheInitialCameraDistance;
+	float initialCameraDistance;
 	double *boundsDoVolume;
 	vtkRenderer *rendererLayerCubo, *rendererLayerImagem;
 	vtkImageImport *imageSource;

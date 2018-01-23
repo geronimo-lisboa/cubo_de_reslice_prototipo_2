@@ -101,11 +101,7 @@ void myResliceCube::CreateReslice()
 	resliceFilter->SetOutputExtent(0, resliceExtent[0]*1.125, 0, resliceExtent[1]*1.125, 0, 1);
 	resliceFilter->Update();
 
-	windowLevelFilter = vtkSmartPointer<vtkImageMapToWindowLevelColors>::New();
-	windowLevelFilter->SetWindow(1000);
-	windowLevelFilter->SetLevel(1000);
-	windowLevelFilter->SetInputConnection(resliceFilter->GetOutputPort());
-	windowLevelFilter->Update();
+
 }
 
 void myResliceCube::CreateCubeGeometry()
@@ -125,17 +121,28 @@ void myResliceCube::CreateCubeGeometry()
 
 void myResliceCube::CreateWindowLevelFilter()
 {
+	windowLevelFilter = vtkSmartPointer<vtkImageMapToWindowLevelColors>::New();
+	windowLevelFilter->SetWindow(350);
+	windowLevelFilter->SetLevel(50);
+	windowLevelFilter->SetInputConnection(resliceFilter->GetOutputPort());
+	windowLevelFilter->Update();
 }
 
 void myResliceCube::CreateImageGeometry()
 {
+
+	std::cout << "distance atual = " << rendererLayerImagem->GetActiveCamera()->GetDistance() << " distance inicial = " << initialCameraDistance << std::endl;
 	auto resliceExtent = CalculateResliceExtent(this);//aqui eu tenho o tamanho do extent por ex.:[0, 280, 0,120, 0, 1];
 	//O extent é da forma [x0,x1, y0, y1, z0, z1].
 	//Os vértices do plano serão da forma v0=[x0,y0,z0] v1=[x1, y0, z0] v2=[x1, y1, z0] v3=[x0, y1, z0].
-	std::array<double, 3> v0 = { { 0,0, 0 } };
-	std::array<double, 3> v1 = { { resliceExtent[0], 0, 0 } };
-	std::array<double, 3> v2 = { { resliceExtent[0], resliceExtent[1], 0 } };
-	std::array<double, 3> v3 = { { 0, resliceExtent[1],0 } };
+	const double minX = -resliceExtent[0] / 2;
+	const double maxX = resliceExtent[0] / 2;
+	const double minY = -resliceExtent[1] / 2;
+	const double maxY = resliceExtent[1] / 2;
+	std::array<double, 3> v0 = { { minX, minY, 0 } };
+	std::array<double, 3> v1 = { { maxX, minY, 0 } };
+	std::array<double, 3> v2 = { { maxX, maxY, 0 } };
+	std::array<double, 3> v3 = { { minX, maxY,0 } };
 	std::cout << "resliceExtent = " << resliceExtent[0] << ", " << resliceExtent[1] << std::endl;
 	//Com esses vértices eu contruo meu polydata
 	auto points = vtkSmartPointer<vtkPoints>::New();
@@ -179,7 +186,20 @@ void myResliceCube::CreateImageGeometry()
 	planeActor->SetMapper(mapper);
 	planeActor->SetTexture(texture);
 	rendererLayerImagem->AddActor(planeActor);
-	rendererLayerImagem->ResetCamera();
+
+	static bool foo;
+	if(!foo)
+		rendererLayerImagem->ResetCamera();
+	foo = true;
+
+	//if (!gotTheInitialCameraDistance) {
+	//	initialCameraDistance = rendererLayerImagem->GetActiveCamera()->GetDistance();
+	//	gotTheInitialCameraDistance = true;
+	//}
+	//double imageRatio = rendererLayerImagem->GetActiveCamera()->GetDistance() / initialCameraDistance;//initialCameraDistance / rendererLayerImagem->GetActiveCamera()->GetDistance();
+	//cout << "Image ratio = " << imageRatio << endl;
+	//double modifiedDistance = rendererLayerImagem->GetActiveCamera()->GetDistance() * imageRatio;
+	//rendererLayerImagem->GetActiveCamera()->SetDistance(modifiedDistance);
 }
 
 vtkSmartPointer<vtkImageMapToWindowLevelColors> myResliceCube::GetWindowLevelFilter() {
@@ -199,6 +219,9 @@ myResliceCube::myResliceCube()
 	resliceFilter = nullptr;
 	resliceMatrix = vtkSmartPointer<vtkMatrix4x4>::New();
 	texture = nullptr;
+	gotTheInitialCameraDistance = false;
+	initialCameraDistance = 0.0;
+
 }
 
 void myResliceCube::SetBoundsDoVolume(double * b) {
@@ -239,11 +262,13 @@ void myResliceCube::OnAfterRenderCallback::SaveDebug()
 
 void myResliceCube::OnAfterRenderCallback::Execute(vtkObject * caller, unsigned long event, void * calldata)
 {
+	owner->SetWindowAndLevel(350, 50);
 	//Recalcula o extent do reslice, pega a nova matriz e aplica os dados novos ao reslicer.
 	auto newResliceExtent = myResliceCube::CalculateResliceExtent(owner);
 	owner->resliceFilter->SetOutputExtent(0, newResliceExtent[0] * 1.125, 0, newResliceExtent[1] * 1.125, 0, 1);
 	owner->resliceMatrix->DeepCopy(owner->cubeActor->GetMatrix());
 	owner->resliceFilter->SetResliceAxes(owner->resliceMatrix);
+	owner->resliceFilter->SetResliceAxesOrigin(owner->cubeActor->GetCenter());
 	//Executa
 	owner->resliceFilter->Update();
 	//Aplica o window-level
@@ -251,7 +276,7 @@ void myResliceCube::OnAfterRenderCallback::Execute(vtkObject * caller, unsigned 
 	//refaz a geometria 
 	owner->CreateImageGeometry();
 	//Salva no hd pra debug
-	SaveDebug();
+	//SaveDebug();
 }
 
 void myResliceCube::SetWindowAndLevel(double w, double l) {
