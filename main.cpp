@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "loadVolume.h"
 #include "myResliceCube.h"
+#include "myInteractorStyleTrackballActor.h"
 class ObserveLoadProgressCommand : public itk::Command
 {
 public:
@@ -119,35 +120,25 @@ public:
 		debugsave->SetInputConnection(thickSlabReslice->GetOutputPort());
 		debugsave->BreakOnError();
 		debugsave->Write();
-		/////Tendo os pontos onde raios saindo do centro encontram os limites do volume eu tenho informações suficientes para calcular extent do reslice
-		////const std::array<double, 6> resliceOutputExtent = { {
-		////		0, vtkMath::Norm()
-		////	} };
-		//std::cout << "--------" << std::endl;
-		//std::cout << "horizontal da imagem = " << xVector<<" tamanho = "<<normH << std::endl;
-		//std::cout << "vertical da imagem = " << yVector <<" tamanho = "<<normV << std::endl;
-		//std::cout << "uMarch = " << uMarch.first <<" gamma = "<< uMarch.second<< std::endl;
-		//std::cout << "uNegMarch = " << uNegMarch.first << " gamma = " << uNegMarch.second << std::endl;
-		//std::cout << "vMarch = " << vMarch.first << " gamma = " << vMarch.second << std::endl;
-		//std::cout << "vNegMarch = " << vNegMarch.first << " gamma = " << vNegMarch.second << std::endl;
+
 	}
 };
 
 int main(int argc, char** argv) {
 	///Carga da imagem
 	ObserveLoadProgressCommand::Pointer prog = ObserveLoadProgressCommand::New();
-	const std::string txtFile = "C:\\meus dicoms\\abdomem-feet-first";  //"C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";  //"C:\\meus dicoms\\Marching Man"; //"C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";// "C:\\meus dicoms\\Marching Man"; /*"C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";*//*"C:\\meus dicoms\\abdomem-feet-first"*/;//"C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";//"C:\\meus dicoms\\Marching Man";//"C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";/*"C:\\meus dicoms\\Marching Man"*/; //"C:\\meus dicoms\\abdomem-feet-first";//"C:\\meus dicoms\\Marching Man"; //"C:\\meus dicoms\\Marching Man";//
+	const std::string txtFile = "C:\\meus dicoms\\abdomem-feet-first";  //"C:\\meus dicoms\\abdomem-feet-first";  "C:\\meus dicoms\\Marching Man"; //"C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";  //"C:\\meus dicoms\\Marching Man"; //"C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";// "C:\\meus dicoms\\Marching Man"; /*"C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";*//*"C:\\meus dicoms\\abdomem-feet-first"*/;//"C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";//"C:\\meus dicoms\\Marching Man";//"C:\\meus dicoms\\Abd-Pel w-c  3.0  B30f";/*"C:\\meus dicoms\\Marching Man"*/; //"C:\\meus dicoms\\abdomem-feet-first";//"C:\\meus dicoms\\Marching Man"; //"C:\\meus dicoms\\Marching Man";//
 	const std::vector<std::string> lst = GetList(txtFile);
 	std::map<std::string, std::string> metadataDaImagem;
 	itk::Image<short, 3>::Pointer imagemOriginal = LoadVolume(metadataDaImagem, lst, prog);
 	///Reorienta a imagem
-	itk::OrientImageFilter<itk::Image<short, 3>, itk::Image<short, 3>>::Pointer orienter = itk::OrientImageFilter<itk::Image<short, 3>, itk::Image<short, 3>>::New();
-	orienter->AddObserver(itk::ProgressEvent(), prog);
-	orienter->UseImageDirectionOn();
-	orienter->SetDesiredCoordinateOrientation(itk::SpatialOrientation::ITK_COORDINATE_ORIENTATION_RIP);
-	orienter->SetInput(imagemOriginal);
-	orienter->Update();
-	imagemOriginal = orienter->GetOutput();
+	//itk::OrientImageFilter<itk::Image<short, 3>, itk::Image<short, 3>>::Pointer orienter = itk::OrientImageFilter<itk::Image<short, 3>, itk::Image<short, 3>>::New();
+	//orienter->AddObserver(itk::ProgressEvent(), prog);
+	//orienter->UseImageDirectionOn();
+	//orienter->SetDesiredCoordinateOrientation(itk::SpatialOrientation::ITK_COORDINATE_ORIENTATION_RIP);
+	//orienter->SetInput(imagemOriginal);
+	//orienter->Update();
+	//imagemOriginal = orienter->GetOutput();
 	//////fim da Carga da imagem - aqui a imagem já está carregada e orientada em uma orientação padrão.
 	vtkSmartPointer<vtkImageImport> imagemImportadaPraVTK = CreateVTKImage(imagemOriginal);//importa a imagem da itk pra vtk.
 	imagemImportadaPraVTK->Update();
@@ -183,7 +174,7 @@ int main(int argc, char** argv) {
 	renderWindowCubeReslicer->AddRenderer(rendererCubo);
 	renderWindowCubeReslicer->SetPosition(300, 0);
 	vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractorCubeReslicer = vtkSmartPointer<vtkRenderWindowInteractor>::New();
-	vtkSmartPointer<vtkInteractorStyleTrackballActor> cubeReslicerStyle = vtkSmartPointer<vtkInteractorStyleTrackballActor>::New();
+	vtkSmartPointer<myInteractorStyleTrackballActor> cubeReslicerStyle = vtkSmartPointer<myInteractorStyleTrackballActor>::New();
 	renderWindowInteractorCubeReslicer->SetInteractorStyle(cubeReslicerStyle);
 	renderWindowCubeReslicer->SetInteractor(renderWindowInteractorCubeReslicer);
 	renderWindowInteractorCubeReslicer->Initialize();

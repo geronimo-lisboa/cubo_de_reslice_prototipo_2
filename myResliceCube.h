@@ -14,7 +14,6 @@ private:
 	};
 
 	bool gotTheInitialCameraDistance;
-	float initialCameraDistance;
 	double *boundsDoVolume;
 	vtkRenderer *rendererLayerCubo, *rendererLayerImagem;
 	vtkImageImport *imageSource;
@@ -24,14 +23,14 @@ private:
 	vtkSmartPointer<vtkMatrix4x4> resliceMatrix;
 	vtkSmartPointer<vtkActor> planeActor;
 	vtkSmartPointer<vtkTexture> texture;
-
+	void MakeCameraFollowTranslation();
 	void SetEverything();
 	void CreateReslice();
 	void CreateCubeGeometry();
 	void CreateWindowLevelFilter();
 	void CreateImageGeometry();
 	vtkSmartPointer<OnAfterRenderCallback> callbackDeModificacaoDoCubo;
-	static inline std::array<double, 2> CalculateResliceExtent(myResliceCube *rc);
+	static inline std::array<double, 2> CalculateResliceExtent(myResliceCube *rc, std::array<std::array<double,3>,4>& vetores );
 	static inline std::pair<std::array<double, 3>, double> MarchVectorUntilBorder(std::array<double, 3> c, std::array<double, 3> v, double* bounds);
 	static inline bool isInsideBounds(std::array<double, 3> p, double bounds[6]);
 public:

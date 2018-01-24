@@ -49,29 +49,41 @@ std::pair<std::array<double, 3>, double> myResliceCube::MarchVectorUntilBorder(s
 	return std::make_pair(p, gamma);
 }
 
-std::array<double, 2> myResliceCube::CalculateResliceExtent(myResliceCube *rc) {
+std::array<double, 2> myResliceCube::CalculateResliceExtent(myResliceCube *rc, std::array<std::array<double, 3>, 4>& vetores) {
 	////qual é o centro?
 	const std::array<double, 3> center = { { rc->cubeActor->GetCenter()[0], 
 											 rc->cubeActor->GetCenter()[1], 
 											 rc->cubeActor->GetCenter()[2], } };
+	cout << "center = " << center << endl;
 	////qual é o vetor?
 	const std::array<double, 3> u = { { rc->cubeActor->GetMatrix()->Element[0][0], 
 										rc->cubeActor->GetMatrix()->Element[1][0],
 										rc->cubeActor->GetMatrix()->Element[2][0], } };
 	const auto uMarch = MarchVectorUntilBorder(center, u, rc->boundsDoVolume);
+	cout << "uMarch = " << uMarch.first << " ; " << uMarch.second << endl;
+
 	const std::array<double, 3> uNeg = { { -rc->cubeActor->GetMatrix()->Element[0][0], 
 										   -rc->cubeActor->GetMatrix()->Element[1][0], 
 										   -rc->cubeActor->GetMatrix()->Element[2][0], } };
 	const auto uNegMarch = MarchVectorUntilBorder(center, uNeg, rc->boundsDoVolume);
+	cout << "uNegMarch = " << uNegMarch.first << " ; " << uNegMarch.second << endl;
 
 	const std::array<double, 3> v = { { rc->cubeActor->GetMatrix()->Element[0][1], 
 										rc->cubeActor->GetMatrix()->Element[1][1],
 										rc->cubeActor->GetMatrix()->Element[2][1], } };
 	const auto vMarch = MarchVectorUntilBorder(center, v, rc->boundsDoVolume);
+	cout << "vMarch = " << vMarch.first << " ; " << vMarch.second << endl;
+
 	const std::array<double, 3> vNeg = { { -rc->cubeActor->GetMatrix()->Element[0][1], 
 										   -rc->cubeActor->GetMatrix()->Element[1][1], 
 										   -rc->cubeActor->GetMatrix()->Element[2][1], } };
 	const auto vNegMarch = MarchVectorUntilBorder(center, vNeg, rc->boundsDoVolume);
+	cout << "vNegMarch = " << vNegMarch.first << " ; " << vNegMarch.second << endl;
+
+	vetores[0] = uMarch.first;
+	vetores[1] = uNegMarch.first;
+	vetores[2] = vMarch.first;
+	vetores[3] = vNegMarch.first;
 
 	const std::array<double, 3> xVector = { { abs(uMarch.first[0] - uNegMarch.first[0]),
 		abs(uMarch.first[1] - uNegMarch.first[1]),
@@ -97,7 +109,8 @@ void myResliceCube::CreateReslice()
 
 	resliceFilter->SetResliceAxesOrigin(cubeActor->GetCenter()[0], cubeActor->GetCenter()[1], cubeActor->GetCenter()[2]);
 	resliceFilter->SetOutputDimensionality(2);
-	auto resliceExtent = CalculateResliceExtent(this);
+	std::array<std::array<double, 3>, 4> vetores;
+	auto resliceExtent = CalculateResliceExtent(this, vetores);
 	resliceFilter->SetOutputExtent(0, resliceExtent[0]*1.125, 0, resliceExtent[1]*1.125, 0, 1);
 	resliceFilter->Update();
 
@@ -107,13 +120,19 @@ void myResliceCube::CreateReslice()
 void myResliceCube::CreateCubeGeometry()
 {
 	vtkSmartPointer<vtkCubeSource> src = vtkSmartPointer<vtkCubeSource>::New();
+	src->SetXLength(100);
+	src->SetYLength(100);
+	src->SetZLength(100);
 	src->SetCenter(imageSource->GetOutput()->GetCenter());//O cubo começa no centro da imagem.
 	vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
 	mapper->SetInputConnection(src->GetOutputPort());
 	vtkSmartPointer<vtkActor> actor = vtkSmartPointer<vtkActor>::New();
 	actor->SetMapper(mapper);
 	actor->GetProperty()->SetRepresentationToWireframe();
-	actor->GetProperty()->SetColor(1, 0, 0);
+	actor->GetProperty()->LightingOff();
+	actor->GetProperty()->BackfaceCullingOff();
+	actor->GetProperty()->SetLineWidth(2);
+	actor->GetProperty()->SetColor(0, 1, 0);
 	rendererLayerCubo->AddActor(actor);
 	rendererLayerCubo->ResetCamera();
 	cubeActor = actor;
@@ -130,20 +149,28 @@ void myResliceCube::CreateWindowLevelFilter()
 
 void myResliceCube::CreateImageGeometry()
 {
+	std::array<std::array<double, 3>, 4> vetores;
+	auto resliceExtent = CalculateResliceExtent(this, vetores);//aqui eu tenho o tamanho do extent por ex.:[0, 280, 0,120, 0, 1];
+///	//O extent é da forma [x0,x1, y0, y1, z0, z1].
+//	//Os vértices do plano serão da forma v0=[x0,y0,z0] v1=[x1, y0, z0] v2=[x1, y1, z0] v3=[x0, y1, z0].
+	vtkImageData * i = this->resliceFilter->GetOutput();
+	
+	
+	const double minX = -i->GetExtent()[1] / 2;
+	const double maxX = i->GetExtent()[1] / 2;
+	const double minY = -i->GetExtent()[3] / 2;
+	const double maxY = i->GetExtent()[3] / 2;
 
-	std::cout << "distance atual = " << rendererLayerImagem->GetActiveCamera()->GetDistance() << " distance inicial = " << initialCameraDistance << std::endl;
-	auto resliceExtent = CalculateResliceExtent(this);//aqui eu tenho o tamanho do extent por ex.:[0, 280, 0,120, 0, 1];
-	//O extent é da forma [x0,x1, y0, y1, z0, z1].
-	//Os vértices do plano serão da forma v0=[x0,y0,z0] v1=[x1, y0, z0] v2=[x1, y1, z0] v3=[x0, y1, z0].
-	const double minX = -resliceExtent[0] / 2;
-	const double maxX = resliceExtent[0] / 2;
-	const double minY = -resliceExtent[1] / 2;
-	const double maxY = resliceExtent[1] / 2;
+	//const double minX = -resliceExtent[0] / 2;
+	//const double maxX = resliceExtent[0] / 2;
+	//const double minY = -resliceExtent[1] / 2;
+	//const double maxY = resliceExtent[1] / 2;
+
 	std::array<double, 3> v0 = { { minX, minY, 0 } };
 	std::array<double, 3> v1 = { { maxX, minY, 0 } };
 	std::array<double, 3> v2 = { { maxX, maxY, 0 } };
 	std::array<double, 3> v3 = { { minX, maxY,0 } };
-	std::cout << "resliceExtent = " << resliceExtent[0] << ", " << resliceExtent[1] << std::endl;
+
 	//Com esses vértices eu contruo meu polydata
 	auto points = vtkSmartPointer<vtkPoints>::New();
 	points->InsertNextPoint(v0[0], v0[1], v0[2]);
@@ -187,19 +214,11 @@ void myResliceCube::CreateImageGeometry()
 	planeActor->SetTexture(texture);
 	rendererLayerImagem->AddActor(planeActor);
 
-	static bool foo;
-	if(!foo)
+	if(!gotTheInitialCameraDistance)
 		rendererLayerImagem->ResetCamera();
-	foo = true;
+	gotTheInitialCameraDistance = true;
 
-	//if (!gotTheInitialCameraDistance) {
-	//	initialCameraDistance = rendererLayerImagem->GetActiveCamera()->GetDistance();
-	//	gotTheInitialCameraDistance = true;
-	//}
-	//double imageRatio = rendererLayerImagem->GetActiveCamera()->GetDistance() / initialCameraDistance;//initialCameraDistance / rendererLayerImagem->GetActiveCamera()->GetDistance();
-	//cout << "Image ratio = " << imageRatio << endl;
-	//double modifiedDistance = rendererLayerImagem->GetActiveCamera()->GetDistance() * imageRatio;
-	//rendererLayerImagem->GetActiveCamera()->SetDistance(modifiedDistance);
+
 }
 
 vtkSmartPointer<vtkImageMapToWindowLevelColors> myResliceCube::GetWindowLevelFilter() {
@@ -220,8 +239,6 @@ myResliceCube::myResliceCube()
 	resliceMatrix = vtkSmartPointer<vtkMatrix4x4>::New();
 	texture = nullptr;
 	gotTheInitialCameraDistance = false;
-	initialCameraDistance = 0.0;
-
 }
 
 void myResliceCube::SetBoundsDoVolume(double * b) {
@@ -259,16 +276,31 @@ void myResliceCube::OnAfterRenderCallback::SaveDebug()
 	debugsave->BreakOnError();
 	debugsave->Write();
 }
-
+//É aqui que eu faço o reslice.
 void myResliceCube::OnAfterRenderCallback::Execute(vtkObject * caller, unsigned long event, void * calldata)
 {
 	owner->SetWindowAndLevel(350, 50);
 	//Recalcula o extent do reslice, pega a nova matriz e aplica os dados novos ao reslicer.
-	auto newResliceExtent = myResliceCube::CalculateResliceExtent(owner);
-	owner->resliceFilter->SetOutputExtent(0, newResliceExtent[0] * 1.125, 0, newResliceExtent[1] * 1.125, 0, 1);
+	std::array<std::array<double, 3>, 4> vetores;
+	auto newResliceExtent = myResliceCube::CalculateResliceExtent(owner, vetores);
+	const std::array<double,3> zero = { { owner->cubeActor->GetCenter()[0], owner->cubeActor->GetCenter()[1], owner->cubeActor->GetCenter()[2] } };
+	std::array<double, 3> dU = vetores[0] - zero;
+	std::array<double, 3> dUNeg = vetores[1] - zero;
+	std::array<double, 3> dV = vetores[2] - zero;
+	std::array<double, 3> dVNeg = vetores[3] - zero;
+	
+
+	//owner->resliceFilter->SetOutputExtent(0, newResliceExtent[0] * 1.125, 0, newResliceExtent[1] * 1.125, 0, 1);
 	owner->resliceMatrix->DeepCopy(owner->cubeActor->GetMatrix());
+	//owner->resliceMatrix->Invert();
 	owner->resliceFilter->SetResliceAxes(owner->resliceMatrix);
+	cout << zero << endl;
 	owner->resliceFilter->SetResliceAxesOrigin(owner->cubeActor->GetCenter());
+	owner->resliceFilter->SetOutputOriginToDefault();
+	owner->resliceFilter->SetUpdateExtentToWholeExtent();
+	owner->resliceFilter->AutoCropOutputOn();
+	owner->resliceFilter->SetOutputExtentToDefault();
+	//owner->resliceFilter->SetOutputSpacingToDefault();
 	//Executa
 	owner->resliceFilter->Update();
 	//Aplica o window-level
@@ -282,4 +314,20 @@ void myResliceCube::OnAfterRenderCallback::Execute(vtkObject * caller, unsigned 
 void myResliceCube::SetWindowAndLevel(double w, double l) {
 	windowLevelFilter->SetWindow(w);
 	windowLevelFilter->SetLevel(l);
+}
+
+void myResliceCube::MakeCameraFollowTranslation() {
+	vtkCamera *camera = rendererLayerCubo->GetActiveCamera();
+	std::array<double, 3> camFocus, camPos, objCenter;
+	camera->GetFocalPoint(camFocus.data());
+	camera->GetPosition(camPos.data());
+	objCenter = { { 
+			cubeActor->GetCenter()[0], cubeActor->GetCenter()[1], cubeActor->GetCenter()[2] 
+		} 
+	};
+	std::array<double, 3> vecFromPosToFocus = camPos - camFocus;
+	std::array<double, 3> modifiedFocus = objCenter;
+	std::array<double, 3> modifiedPos = objCenter + vecFromPosToFocus;
+	camera->SetFocalPoint(modifiedFocus.data());
+	camera->SetPosition(modifiedPos.data());
 }

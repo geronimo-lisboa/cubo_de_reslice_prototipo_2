@@ -25,11 +25,11 @@ const std::vector<std::string> GetList(std::string path)
 	//{
 	//	reader->Update();
 	//	ImageType::Pointer result = reader->GetOutput();
-	//	result->Print(std::cout);//My image, loaded.
+
 	//}
 	//catch (itk::ExceptionObject& ex)
 	//{
-	//	ex.Print(std::cout);
+
 	//}
 ///////
 	//std::string line;

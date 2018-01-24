@@ -48,7 +48,6 @@
 #include <vtkImageActor.h>
 #include <vtkImageProperty.h>
 #include <vtkImageMapper3d.h>
-#include <vtkObjectFactory.h>
 #include <vtkLightsPass.h>
 #include <vtkDefaultPass.h>
 #include <vtkRenderPassCollection.h>
@@ -81,7 +80,12 @@
 #include <vtkPiecewiseFunction.h>
 #include <vtkTexture.h>
 #include <vtkFloatArray.h>
+#include <vtkInteractorStyle.h>
 #include <vtkPointData.h>
+#include <vtkCellPicker.h>
+#include <vtkCallbackCommand.h>
+#include <vtkMath.h>
+#include <vtkProp3D.h>
 
 
 static inline std::array<double, 3> operator+(const std::array<double, 3>& a, const std::array<double, 3>& b) {
